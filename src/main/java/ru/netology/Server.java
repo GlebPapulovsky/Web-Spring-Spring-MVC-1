@@ -4,10 +4,20 @@ import java.io.*;
 import java.net.*;
 import java.nio.file.*;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
+import java.util.logging.Handler;
 
 class Server {
+    private final Map<String, Handler> handlers = new HashMap<>();
+
+    public void addHandler(String method, String path, Handler handler) {
+        String key = method + ":" + path;
+        handlers.put(key, handler);
+    }
+
     private final List<String> validPaths = List.of(
             "/index.html", "/spring.svg", "/spring.png", "/resources.html",
             "/styles.css", "/app.js", "/links.html", "/forms.html",
@@ -17,23 +27,25 @@ class Server {
 
 
 
-    public void start() {
+    public void listen(int port) {
 
-        try (ServerSocket serverSocket = new ServerSocket(9999)) {
+        try (ServerSocket serverSocket = new ServerSocket(port)) {
+            System.out.println("Сервер запущен на порту " + port);
             while (true) {
                 Socket socket = serverSocket.accept();
-                threadPool.submit(() -> handler(socket));
+                threadPool.submit(() -> handlerForClient(socket));
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private void handler(Socket socket) {
+    private void handlerForClient(Socket socket) {
         try (
                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream())
         ) {
+            System.out.println("server got request");
             String requestLine = in.readLine();
             String[] parts = requestLine.split(" ");
 
@@ -43,7 +55,7 @@ class Server {
 
             String path = parts[1];
             if (!validPaths.contains(path)) {
-                sendResponse(out, "404 Not Found", "Content-Length: 0");
+                sendResponse(out, "404 Not Found!!!", "Content-Length: 0");
                 return;
             }
 
@@ -79,4 +91,8 @@ class Server {
         Files.copy(filePath, out);
         out.flush();
     }
+
+
+
+
 }
